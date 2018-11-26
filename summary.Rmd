@@ -6,16 +6,23 @@ output: html_document
 ---
 
 Load necessary packages
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2) #dynamic graphics
 library(tidyverse) #general tidying
 library(tidytext) #text tidying
 library(tm) #text mining
 library(SnowballC) #stemming
+library(readr) #reading in csv file
+library(dplyr) #manipulating datasets
+library(qdap) #text data manipulation
+```
+
+Loading the dataset into the Summary Rmd
+```{r}
+fake <- read_csv("fake.csv")
 ```
 
 ```{r}
-
+fake_edit <- rm_stopwords(fake$text, stopwords = tm::stopwords("english"))
 ```
-
