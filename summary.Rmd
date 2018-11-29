@@ -18,11 +18,39 @@ library(dplyr) #manipulating datasets
 library(qdap) #text data manipulation
 ```
 
-Loading the dataset into the Summary Rmd
+
+
+Basic Exploration:
+
 ```{r}
+#Loading the dataset into the Summary Rmd
 fake <- read_csv("fake.csv")
 ```
 
 ```{r}
-fake_edit <- rm_stopwords(fake$text, stopwords = tm::stopwords("english"))
+#remove stopwords
+fake_edit <- fake %>% rm_stopwords(fake$text, stopwords = tm::stopwords("english"))
 ```
+
+```{r}
+#See how many observations are in each type of fake news
+fake %>% group_by(type) %>% summarize(n = n())
+```
+
+```{r}
+#get sentiments for title, thread, text
+titlesent <- get_nrc_sentiment(fake$title)
+threadsent <- get_nrc_sentiment(fake$thread_title)
+textsent <- get_nrc_sentiment(fake$text)
+
+sents <- c(titlesent, threadsent, textsent)
+fake <- cbind(fake, sents)
+```
+
+```{r}
+#make sentiment distributions
+
+```
+
+
+
