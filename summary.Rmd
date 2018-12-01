@@ -17,6 +17,9 @@ library(readr) #reading in csv file
 library(dplyr) #manipulating datasets
 library(qdap) #text data manipulation
 library(syuzhet) #loading sentiment dictionary to calculate presence of various emotions
+library(tidyr) #data tidying
+library(wordcloud) #make a wordcloud
+library(reshape2) #faceting wordcloud by color
 ```
 
 Basic Exploration:
@@ -28,60 +31,159 @@ fake <- read_csv("fake.csv")
 
 ```{r}
 #See how many observations are in each type of fake news
-fake %>% group_by(type) %>% summarize(n = n())
+typetotals <- fake %>% group_by(type) %>% summarize(n = n())
 ```
 
 ```{r}
-#get sentiments for title, thread, text
-titlesent <- get_nrc_sentiment(fake$title)
-threadsent <- get_nrc_sentiment(fake$thread_title)
-textsent <- get_nrc_sentiment(fake$text)
-
-sents <- c(titlesent, threadsent, textsent)
-fake <- cbind(fake, sents)
+#making a tidy_fake dataset where we have the the words in their own column for facilitated data analysis and exploration
+tidy_fake <- fake %>%
+  group_by(text) %>%
+  mutate(linenumber = row_number()) %>%
+  ungroup %>%
+  unnest_tokens(word, text)
 ```
 
 ```{r}
-#make sentiment distributions
+#what are the most common words for each basic emotion?
+#we will use the nrc dictionary so these emotions are the following: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust
 
+#anger
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+
+tidy_fake %>%
+  inner_join(nrc_anger) %>%
+  count(word, sort = TRUE)
+
+#fear
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+
+tidy_fake %>%
+  inner_join(nrc_fear) %>%
+  count(word, sort = TRUE)
+
+#anticipation
+nrc_anticipation <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anticipation")
+
+tidy_fake %>%
+  inner_join(nrc_anticipation) %>%
+  count(word, sort = TRUE)
+
+#trust
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+
+tidy_fake %>%
+  inner_join(nrc_trust) %>%
+  count(word, sort = TRUE)
+
+#surprise
+nrc_surprise <- get_sentiments("nrc") %>% 
+  filter(sentiment == "surprise")
+
+tidy_fake %>%
+  inner_join(nrc_surprise) %>%
+  count(word, sort = TRUE)
+
+#sadness
+nrc_sadness <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+
+tidy_fake %>%
+  inner_join(nrc_sadness) %>%
+  count(word, sort = TRUE)
+
+#joy
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_fake %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+#disgust
+nrc_disgust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "disgust")
+
+tidy_fake %>%
+  inner_join(nrc_disgust) %>%
+  count(word, sort = TRUE)
 ```
 
 ```{r}
-tokens <- data_frame(text = fake$text) %>% unnest_tokens(word, text) #would be helpful to find a way to add author column and type column to tokens
-tokens %>%
-  inner_join(get_sentiments("bing")) %>% # pull out only sentiment words
-  count(sentiment) %>% # count the number of positive & negative words
-  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
-  mutate(sentiment = positive - negative) %>% # number of positive words minus number of negative words 
+#find net sentiment for each type of fake news documented in the dataset using the bing lexicon
+#note that some types, such as bs (>400000), have more corresponding observations than other types, such as fake(<400)
+fake_sentiment <- tidy_fake %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(type, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+fake_sentiment
+
+#plot the sentiment score for each type of fake news
+ggplot(fake_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for Each Type of Fake News", x = "Type of Fake News", y = "Sentiment Score")
 ```
 
 ```{r}
-
-```
-
-Project goals: --> I dont think we need this part anymore as per our new goals but I kept it in here just in case --> problems in line 53 and 58
-```{r}
-#remove stopwords
-fake_edit <- fake
-fake_edit <- fake_edit %>% tm_map(removeWords, stopwords("english"))
-
-#count most frequently appearing words
-textfreq <- table(unlist(fake_edit$text))
-fake2 <- cbind(names(textfreq), as.integer(textfreq))
-dtm <- TermDocumentMatrix(fake2)
-m <- as.matrix(dtm)
-v <- sort(rowSums(m),decreasing=TRUE)
-d <- data.frame(word = names(v),freq=v)
-
-#look at first ten most frequent words
-head(d, 10)
+#we can also get the sentiment score on a scale of -5 to 5 from the afinn lexicon
+afinn <- tidy_fake %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(type) %>% 
+  summarise(sentiment = sum(score)) %>% 
+  mutate(method = "AFINN")
+afinn
 ```
 
 ```{r}
-#Making a word cloud
-set.seed(1234)
-wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-          max.words = 200, random.order = FALSE, rot.per = 0.35, 
-          colors = brewer.pal(8, "Dark2"))
+#positive and negative words in nrc lexicon
+get_sentiments("nrc") %>% 
+     filter(sentiment %in% c("positive", 
+                             "negative")) %>% 
+  count(sentiment)
+
+#positive and negative words in bing lexicon
+get_sentiments("bing") %>% 
+  count(sentiment)
+
+#both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexon. This coan contribute to the results we see in our data
+```
+
+```{r}
+#counting most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon
+bing_word_counts <- tidy_fake %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+bing_word_counts
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+```{r}
+#wordcloud with most frqeuently appearing words
+tidy_fake %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+#wordcloud faceted into positive and negative with color (blue = negative, red = positive)
+tidy_fake %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("blue", "orange"),
+                   max.words = 100)
 ```
 
