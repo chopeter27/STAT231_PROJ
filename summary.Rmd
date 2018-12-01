@@ -22,11 +22,14 @@ library(wordcloud) #make a wordcloud
 library(reshape2) #faceting wordcloud by color
 ```
 
-Basic Exploration:
-
+Basic Data Exploration:
 ```{r}
 #Loading the dataset into the Summary Rmd
 fake <- read_csv("fake.csv")
+```
+
+```{r}
+real
 ```
 
 ```{r}
@@ -176,7 +179,7 @@ bing_word_counts %>%
 tidy_fake %>%
   anti_join(stop_words) %>%
   count(word) %>%
-  with(wordcloud(word, n, max.words = 100))
+  with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
 
 #wordcloud faceted into positive and negative with color (blue = negative, red = positive)
 tidy_fake %>%
@@ -185,5 +188,33 @@ tidy_fake %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
   comparison.cloud(colors = c("blue", "orange"),
                    max.words = 100)
+```
+
+Now, it is time to start the machine learning aspect of the project.
+```{r}
+#let's use the bing lexicon to add a sentiment column to the tidy_fake dataset
+tidy_fake <- tidy_fake %>%
+  inner_join(get_sentiments("bing"))
+
+#using afinn lexicon to append the sentiment score of each word to tidy_fake 
+tidy_fake <- tidy_fake %>% 
+  inner_join(get_sentiments("afinn"))
+```
+
+```{r}
+#calculate average afinn sentiment score for positive and negative words
+tidy_fake %>%
+  select(score, sentiment) %>%
+  group_by(sentiment) %>%
+  summarise(n = n(), avgscore = sum(score) / n)
+```
+
+```{r}
+#categorize article as positive or negative overall
+tidy_fake %>%
+  select(uuid, score) %>%
+  group_by(uuid) %>%
+  summarise(n = n(), avgscore = sum(score) / n) %>%
+  mutate(articlesent = ifelse(avgscore < 0, "negative", "positive"))
 ```
 
