@@ -12,6 +12,7 @@ library(ggplot2) #dynamic graphics
 library(tidyverse) #general tidying
 library(tidytext) #text tidying
 library(tm) #text mining
+library(wordcloud) #wordcloud
 library(SnowballC) #stemming
 library(readr) #reading in csv file
 library(dplyr) #manipulating datasets
@@ -28,7 +29,9 @@ fake <- read_csv("fake.csv")
 
 ```{r}
 #See how many observations are in each type of fake news
-fake %>% group_by(type) %>% summarize(n = n())
+fake %>% 
+  group_by(type) %>% 
+  summarize(n = n())
 ```
 
 ```{r}
@@ -43,23 +46,26 @@ fake <- cbind(fake, sents)
 
 ```{r}
 #make sentiment distributions
-
+#do we want to combine sentiment values of the categories or separate them
+fake$positive #refers to the positive count of the title?
+head(fake$positive)
 ```
 
 ```{r}
-tokens <- data_frame(text = fake$text) %>% unnest_tokens(word, text) #would be helpful to find a way to add author column and type column to tokens
-tokens %>%
+tokens <- data_frame(text = fake$text, uuid = fake$uuid, type = fake$type) %>% #create data frame with text, some ID, and type
+  unnest_tokens(word, text) #separate the text into individual strings
+tokens %>% 
   inner_join(get_sentiments("bing")) %>% # pull out only sentiment words
   count(sentiment) %>% # count the number of positive & negative words
   spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
-  mutate(sentiment = positive - negative) %>% # number of positive words minus number of negative words 
+  mutate(sentiment = positive - negative) # number of positive words minus number of negative words 
 ```
 
 ```{r}
 
 ```
 
-Project goals: --> I dont think we need this part anymore as per our new goals but I kept it in here just in case --> problems in line 53 and 58
+Project goals: --> I dont think we need this part anymore as per our new goals but I kept it in here just in case --> problems in line 53 and 58 (I agreeee)
 ```{r}
 #remove stopwords
 fake_edit <- fake
