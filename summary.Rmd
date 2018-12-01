@@ -16,20 +16,14 @@ library(SnowballC) #stemming
 library(readr) #reading in csv file
 library(dplyr) #manipulating datasets
 library(qdap) #text data manipulation
+library(syuzhet) #loading sentiment dictionary to calculate presence of various emotions
 ```
-
-
 
 Basic Exploration:
 
 ```{r}
 #Loading the dataset into the Summary Rmd
 fake <- read_csv("fake.csv")
-```
-
-```{r}
-#remove stopwords
-fake_edit <- fake %>% rm_stopwords(fake$text, stopwords = tm::stopwords("english"))
 ```
 
 ```{r}
@@ -52,5 +46,42 @@ fake <- cbind(fake, sents)
 
 ```
 
+```{r}
+tokens <- data_frame(text = fake$text) %>% unnest_tokens(word, text) #would be helpful to find a way to add author column and type column to tokens
+tokens %>%
+  inner_join(get_sentiments("bing")) %>% # pull out only sentiment words
+  count(sentiment) %>% # count the number of positive & negative words
+  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
+  mutate(sentiment = positive - negative) %>% # number of positive words minus number of negative words 
+```
 
+```{r}
+
+```
+
+Project goals: --> I dont think we need this part anymore as per our new goals but I kept it in here just in case --> problems in line 53 and 58
+```{r}
+#remove stopwords
+fake_edit <- fake
+fake_edit <- fake_edit %>% tm_map(removeWords, stopwords("english"))
+
+#count most frequently appearing words
+textfreq <- table(unlist(fake_edit$text))
+fake2 <- cbind(names(textfreq), as.integer(textfreq))
+dtm <- TermDocumentMatrix(fake2)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+
+#look at first ten most frequent words
+head(d, 10)
+```
+
+```{r}
+#Making a word cloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 200, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
 
