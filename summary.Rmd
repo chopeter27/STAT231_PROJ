@@ -21,31 +21,47 @@ library(syuzhet) #loading sentiment dictionary to calculate presence of various 
 library(tidyr) #data tidying
 library(wordcloud) #make a wordcloud
 library(reshape2) #faceting wordcloud by color
+library(rpart) #tree modeling for classification
+library(partykit) #tree modeling
+library(pROC) #area under the curve
+set.seed(123)
 ```
 
 Basic Data Exploration:
 ```{r}
 #Loading the dataset into the Summary Rmd
 fake <- read_csv("fake.csv")
-```
+real <- read_csv("Articles.csv")
+new_ds <- read_csv("data.csv")
+fake_type <- c("fake", "satire", "bias", "bs", "conspiracy", "state", "junksci", "hate")
+real_type <- c("sports", "business")
 
-```{r}
-real
+real <- real %>% 
+  mutate(binary_type = ifelse(NewsType %in% fake_type, 0, 1)) #now fake = 0 and real = 1
+fake <- fake %>% 
+  mutate(binary_type = ifelse(type %in% fake_type, 0, 1)) #now fake = 0 and real = 1
+new_ds <- new_ds %>% 
+  filter(Label == 1)
+real <- full_join(real, new_ds, by = c("Heading" = "Headline", "Article" = "Body", "binary_type" = "Label"))
+real <- real %>% 
+  mutate(id = as.character(seq(1:4564)))
+combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type")) %>% 
+  select(uuid, binary_type, type, title, text)
 ```
 
 ```{r}
 #See how many observations are in each type of fake news
-<<<<<<< HEAD
-fake %>% 
+combined %>% 
   group_by(type) %>% 
   summarize(n = n())
-=======
-typetotals <- fake %>% group_by(type) %>% summarize(n = n())
+typetotals <- combined %>% 
+  group_by(type) %>% 
+  summarize(n = n())
 ```
 
 ```{r}
 #making a tidy_fake dataset where we have the the words in their own column for facilitated data analysis and exploration
-tidy_fake <- fake %>%
+tidy_combined <- combined %>%
   group_by(text) %>%
   mutate(linenumber = row_number()) %>%
   ungroup %>%
@@ -60,7 +76,7 @@ tidy_fake <- fake %>%
 nrc_anger <- get_sentiments("nrc") %>% 
   filter(sentiment == "anger")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_anger) %>%
   count(word, sort = TRUE)
 
@@ -68,7 +84,7 @@ tidy_fake %>%
 nrc_fear <- get_sentiments("nrc") %>% 
   filter(sentiment == "fear")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_fear) %>%
   count(word, sort = TRUE)
 
@@ -76,7 +92,7 @@ tidy_fake %>%
 nrc_anticipation <- get_sentiments("nrc") %>% 
   filter(sentiment == "anticipation")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_anticipation) %>%
   count(word, sort = TRUE)
 
@@ -84,7 +100,7 @@ tidy_fake %>%
 nrc_trust <- get_sentiments("nrc") %>% 
   filter(sentiment == "trust")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_trust) %>%
   count(word, sort = TRUE)
 
@@ -92,7 +108,7 @@ tidy_fake %>%
 nrc_surprise <- get_sentiments("nrc") %>% 
   filter(sentiment == "surprise")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_surprise) %>%
   count(word, sort = TRUE)
 
@@ -100,7 +116,7 @@ tidy_fake %>%
 nrc_sadness <- get_sentiments("nrc") %>% 
   filter(sentiment == "sadness")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_sadness) %>%
   count(word, sort = TRUE)
 
@@ -108,7 +124,7 @@ tidy_fake %>%
 nrc_joy <- get_sentiments("nrc") %>% 
   filter(sentiment == "joy")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_joy) %>%
   count(word, sort = TRUE)
 
@@ -116,29 +132,28 @@ tidy_fake %>%
 nrc_disgust <- get_sentiments("nrc") %>% 
   filter(sentiment == "disgust")
 
-tidy_fake %>%
+tidy_combined %>%
   inner_join(nrc_disgust) %>%
   count(word, sort = TRUE)
->>>>>>> 4a063fd70aa484c5b55d85e9ef64026b2ad9ff54
 ```
 
 ```{r}
 #find net sentiment for each type of fake news documented in the dataset using the bing lexicon
 #note that some types, such as bs (>400000), have more corresponding observations than other types, such as fake(<400)
-fake_sentiment <- tidy_fake %>%
+combined_sentiment <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(type, sentiment) %>%
   spread(sentiment, n, fill = 0) %>%
   mutate(sentiment = positive - negative)
-fake_sentiment
+combined_sentiment
 
 #plot the sentiment score for each type of fake news
-ggplot(fake_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for Each Type of Fake News", x = "Type of Fake News", y = "Sentiment Score")
+ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for Each Type of Fake News", x = "Type of Fake News", y = "Sentiment Score")
 ```
 
 ```{r}
 #we can also get the sentiment score on a scale of -5 to 5 from the afinn lexicon
-afinn <- tidy_fake %>% 
+afinn <- tidy_combined %>% 
   inner_join(get_sentiments("afinn")) %>% 
   group_by(type) %>% 
   summarise(sentiment = sum(score)) %>% 
@@ -147,22 +162,6 @@ afinn
 ```
 
 ```{r}
-<<<<<<< HEAD
-#make sentiment distributions
-#do we want to combine sentiment values of the categories or separate them
-fake$positive #refers to the positive count of the title?
-head(fake$positive)
-```
-
-```{r}
-tokens <- data_frame(text = fake$text, uuid = fake$uuid, type = fake$type) %>% #create data frame with text, some ID, and type
-  unnest_tokens(word, text) #separate the text into individual strings
-tokens %>% 
-  inner_join(get_sentiments("bing")) %>% # pull out only sentiment words
-  count(sentiment) %>% # count the number of positive & negative words
-  spread(sentiment, n, fill = 0) %>% # made data wide rather than narrow
-  mutate(sentiment = positive - negative) # number of positive words minus number of negative words 
-=======
 #positive and negative words in nrc lexicon
 get_sentiments("nrc") %>% 
      filter(sentiment %in% c("positive", 
@@ -178,7 +177,7 @@ get_sentiments("bing") %>%
 
 ```{r}
 #counting most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon
-bing_word_counts <- tidy_fake %>%
+bing_word_counts <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
@@ -199,39 +198,34 @@ bing_word_counts %>%
 
 ```{r}
 #wordcloud with most frqeuently appearing words
-tidy_fake %>%
+tidy_combined %>%
   anti_join(stop_words) %>%
   count(word) %>%
   with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
 
 #wordcloud faceted into positive and negative with color (blue = negative, red = positive)
-tidy_fake %>%
+tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
   comparison.cloud(colors = c("blue", "orange"),
                    max.words = 100)
->>>>>>> 4a063fd70aa484c5b55d85e9ef64026b2ad9ff54
 ```
 
 Now, it is time to start the machine learning aspect of the project.
 ```{r}
 #let's use the bing lexicon to add a sentiment column to the tidy_fake dataset
-tidy_fake <- tidy_fake %>%
+tidy_combined_b <- tidy_combined %>%
   inner_join(get_sentiments("bing"))
 
 #using afinn lexicon to append the sentiment score of each word to tidy_fake 
-tidy_fake <- tidy_fake %>% 
+tidy_combined_a <- tidy_combined_b %>% 
   inner_join(get_sentiments("afinn"))
 ```
 
-<<<<<<< HEAD
-Project goals: --> I dont think we need this part anymore as per our new goals but I kept it in here just in case --> problems in line 53 and 58 (I agreeee)
-=======
->>>>>>> 4a063fd70aa484c5b55d85e9ef64026b2ad9ff54
 ```{r}
 #calculate average afinn sentiment score for positive and negative words
-tidy_fake %>%
+tidy_combined_a %>%
   select(score, sentiment) %>%
   group_by(sentiment) %>%
   summarise(n = n(), avgscore = sum(score) / n)
@@ -239,10 +233,28 @@ tidy_fake %>%
 
 ```{r}
 #categorize article as positive or negative overall
-tidy_fake %>%
-  select(uuid, score) %>%
+tidy_combined_bin <- tidy_combined_a %>%
+  select(uuid, score, binary_type) %>% 
   group_by(uuid) %>%
-  summarise(n = n(), avgscore = sum(score) / n) %>%
+  summarise(n = n(), avgscore = sum(score) / n, type = mean(binary_type)) %>%
   mutate(articlesent = ifelse(avgscore < 0, "negative", "positive"))
+tidy_combined_bin
+
+n <- nrow(tidy_combined_bin)
+train_id <- sample(1:n, size = round(n*0.8))
+train <- tidy_combined_bin[train_id,]
+test <- tidy_combined_bin[-train_id,]
+
+tree <- rpart(type ~ avgscore, data = train)
+plot(as.party(tree))
+tree
+
+prediction <- predict(tree, test)
+test <- test %>% 
+  mutate(prediction = prediction)
+roc_obj <- roc(test$type, test$prediction)
+auc(roc_obj)
+plot(roc_obj)
+
 ```
 
