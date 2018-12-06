@@ -236,25 +236,34 @@ tidy_combined_a %>%
 tidy_combined_bin <- tidy_combined_a %>%
   select(uuid, score, binary_type) %>% 
   group_by(uuid) %>%
-  summarise(n = n(), avgscore = sum(score) / n, type = mean(binary_type)) %>%
+  summarise(n_words = n(), avgscore = sum(score) / n_words, type = mean(binary_type)) %>%
   mutate(articlesent = ifelse(avgscore < 0, "negative", "positive"))
 tidy_combined_bin
 
-n <- nrow(tidy_combined_bin)
-train_id <- sample(1:n, size = round(n*0.8))
-train <- tidy_combined_bin[train_id,]
-test <- tidy_combined_bin[-train_id,]
+tidy_combined_c <- tidy_combined_a %>%
+  select(uuid, sentiment, score) %>%
+  group_by(uuid) %>%
+  summarise(n_positive = sum(sentiment == 'positive'),
+            n_negative = sum(sentiment == 'negative'))
 
-tree <- rpart(type ~ avgscore, data = train)
+tidy_combined_final <- inner_join(tidy_combined_bin, tidy_combined_c, by = c('uuid' = 'uuid')) %>%
+  mutate(txt_type = as.factor(type)) %>%
+  select(-type)
+
+n <- nrow(tidy_combined_final)
+train_id <- sample(1:n, size = round(n * 0.8))
+train <- tidy_combined_final[train_id,]
+test <- tidy_combined_final[-train_id,]
+
+tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative, data = train)
 plot(as.party(tree))
 tree
 
 prediction <- predict(tree, test)
 test <- test %>% 
   mutate(prediction = prediction)
-roc_obj <- roc(test$type, test$prediction)
+roc_obj <- roc(test$txt_type, test$prediction)
 auc(roc_obj)
 plot(roc_obj)
-
 ```
 
