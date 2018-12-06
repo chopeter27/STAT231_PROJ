@@ -266,4 +266,14 @@ roc_obj <- roc(test$txt_type, test$prediction)
 auc(roc_obj)
 plot(roc_obj)
 ```
+Based on this tree, we can see that none of the predictors (average score, number of words, number of positive words, and number of number of negative words) are userful in predicting whether an article is real or fake.
+
+```{r}
+#Making a logistic regression model for txt_type
+mylogit <- glm(txt_type ~ avgscore + n_words + n_positive, data = tidy_combined_final, family = "binomial")
+#Omitted n_negative because this is colinear with n_negative
+summary(mylogit)
+plot(mylogit)
+```
+
 
