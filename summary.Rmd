@@ -29,13 +29,14 @@ set.seed(123)
 
 Basic Data Exploration:
 ```{r}
-#Loading the dataset into the Summary Rmd
+# Loading the dataset
 fake <- read_csv("fake.csv")
 real <- read_csv("Articles.csv")
 new_ds <- read_csv("data.csv")
 fake_type <- c("fake", "satire", "bias", "bs", "conspiracy", "state", "junksci", "hate")
 real_type <- c("sports", "business")
 
+# Merging the datasets and removing unnecessary columns
 real <- real %>% 
   mutate(binary_type = ifelse(NewsType %in% fake_type, 0, 1)) #now fake = 0 and real = 1
 fake <- fake %>% 
@@ -47,6 +48,10 @@ real <- real %>%
   mutate(id = as.character(seq(1:4564)))
 combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type")) %>% 
   select(uuid, binary_type, type, title, text)
+
+# Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
+tidy_combined <- combined %>%
+  unnest_tokens(word, text)
 ```
 
 ```{r}
@@ -57,15 +62,6 @@ combined %>%
 typetotals <- combined %>% 
   group_by(type) %>% 
   summarize(n = n())
-```
-
-```{r}
-#making a tidy_fake dataset where we have the the words in their own column for facilitated data analysis and exploration
-tidy_combined <- combined %>%
-  group_by(text) %>%
-  mutate(linenumber = row_number()) %>%
-  ungroup %>%
-  unnest_tokens(word, text)
 ```
 
 ```{r}
@@ -173,7 +169,7 @@ get_sentiments("nrc") %>%
 get_sentiments("bing") %>% 
   count(sentiment)
 
-#both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexon. This coan contribute to the results we see in our data
+#both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexon. This can contribute to the results we see in our data
 ```
 
 ```{r}
@@ -215,54 +211,54 @@ tidy_combined %>%
 
 Now, it is time to start the machine learning aspect of the project.
 ```{r}
-#let's use the bing lexicon to add a sentiment column to the tidy_fake dataset
-tidy_combined_b <- tidy_combined %>%
-  inner_join(get_sentiments("bing"))
+# #let's use the bing lexicon to add a sentiment column to the tidy_fake dataset
+# tidy_combined_b <- tidy_combined %>%
+#   inner_join(get_sentiments("bing"))
 
 #using afinn lexicon to append the sentiment score of each word to tidy_fake 
-tidy_combined_a <- tidy_combined_b %>% 
+tidy_combined_a <- tidy_combined %>% 
   inner_join(get_sentiments("afinn"))
 ```
 
 ```{r}
-#calculate average afinn sentiment score for positive and negative words
-tidy_combined_a %>%
-  select(score, sentiment) %>%
-  group_by(sentiment) %>%
-  summarise(n = n(), avgscore = sum(score) / n)
+# #calculate average afinn sentiment score for positive and negative words
+# tidy_combined_a %>%
+#   select(score, sentiment) %>%
+#   group_by(sentiment) %>%
+#   summarise(n = n(), avgscore = sum(score) / n)
 ```
 
 ```{r}
 #categorize article as positive or negative overall
-tidy_combined_bin <- tidy_combined_a %>%
+tidy_combined_final <- tidy_combined_a %>%
   select(uuid, score, binary_type) %>% 
   group_by(uuid) %>%
-  summarise(n_words = n(), avgscore = sum(score) / n_words, type = mean(binary_type)) %>%
-  mutate(articlesent = ifelse(avgscore < 0, "Negative", "Positive"))
-tidy_combined_bin
-
-tidy_combined_c <- tidy_combined_a %>%
-  select(uuid, sentiment, score) %>%
-  group_by(uuid) %>%
-  summarise(n_positive = sum(sentiment == 'Positive'),
-            n_negative = sum(sentiment == 'Negative'))
-
-tidy_combined_final <- inner_join(tidy_combined_bin, tidy_combined_c, by = c('uuid' = 'uuid')) %>%
+  summarise(n_words = n(), avgscore = sum(score) / n_words, 
+            type = mean(binary_type), 
+            positive_score = sum(score[score > 0]), 
+            negative_score = sum(score[score < 0]),
+            n_positive = sum(score > 0),
+            n_negative = sum(score < 0)
+            ) %>%
+  mutate(articlesent = ifelse(avgscore < 0, "Negative", "Positive")) %>% 
   mutate(txt_type = as.factor(type)) %>%
   select(-type)
+tidy_combined_final
 
+# Decision Tree Training Process
 n <- nrow(tidy_combined_final)
 train_id <- sample(1:n, size = round(n * 0.8))
 train <- tidy_combined_final[train_id,]
 test <- tidy_combined_final[-train_id,]
 
-tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative, data = train)
+tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative_score + positive_score, data = train)
 plot(as.party(tree))
 tree
 
 prediction <- predict(tree, test)
+
 test <- test %>% 
-  mutate(prediction = prediction)
+  mutate(prediction = prediction[1])
 roc_obj <- roc(test$txt_type, test$prediction)
 auc(roc_obj)
 plot(roc_obj)
