@@ -159,6 +159,7 @@ afinn <- tidy_combined %>%
   summarise(sentiment = sum(score)) %>% 
   mutate(method = "AFINN")
 afinn
+
 ```
 
 ```{r}
