@@ -294,6 +294,15 @@ ggplot(tidy_combined_final, aes(x = avgscore, fill = txt_type)) +
   geom_histogram() +
   xlab("Average Score") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
+```
+
+```{r}
+ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Average Score") +
+  ggtitle("Average Sentiment Scores in Real and Fake News") +
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 2.3)
 ```
