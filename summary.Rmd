@@ -34,9 +34,9 @@ set.seed(123)
 Basic Data Exploration:
 ```{r}
 # Loading the dataset
-fake <- read_csv("fake.csv")
-real <- read_csv("Articles.csv")
-new_ds <- read_csv("data.csv")
+fake <- read_csv("fake.csv") #all fake
+real <- read_csv("Articles.csv") #all real
+new_ds <- read_csv("data.csv") #combination of real and fake
 fake_type <- c("fake", "satire", "bias", "bs", "conspiracy", "state", "junksci", "hate")
 real_type <- c("sports", "business")
 
@@ -49,8 +49,10 @@ new_ds <- new_ds %>%
   filter(Label == 1)
 real <- full_join(real, new_ds, by = c("Heading" = "Headline", "Article" = "Body", "binary_type" = "Label"))
 real <- real %>% 
-  mutate(id = as.character(seq(1:4564)))
-combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type")) %>% 
+  mutate(id = as.character(seq(1:4564))) %>%
+  mutate(realtype = "real")
+
+combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type", "type" = "realtype")) %>% 
   select(uuid, binary_type, type, title, text)
 
 
@@ -149,7 +151,7 @@ combined_sentiment <- tidy_combined %>%
 combined_sentiment
 
 #plot the sentiment score for each type of fake news
-ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for All News", x = "Type of Fake News", y = "Sentiment Score")
+ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for All News", x = "Type of News", y = "Sentiment Score")
 ```
 
 ```{r}
