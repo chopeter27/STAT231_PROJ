@@ -8,22 +8,25 @@ output: html_document
 Load necessary packages
 ```{r setup, include=FALSE, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Tidying data packages
 library(ggplot2) #dynamic graphics
-library(tidyverse) #general tidying
-library(tidytext) #text tidying
-library(tm) #text mining
-library(wordcloud) #wordcloud
-library(SnowballC) #stemming
+library(tidyr) #data tidying
 library(readr) #reading in csv file
 library(dplyr) #manipulating datasets
-library(qdap) #text data manipulation
-library(syuzhet) #loading sentiment dictionary to calculate presence of various emotions
-library(tidyr) #data tidying
-library(wordcloud) #make a wordcloud
-library(reshape2) #faceting wordcloud by color
+
+# Text Data Extraction and Manipulation
+library(tm) #text mining
+library(tidytext) #text tidying
+library(SnowballC) #stemming
+
+# Decision Tree Modeling Packages
 library(rpart) #tree modeling for classification
 library(partykit) #tree modeling
 library(pROC) #area under the curve
+
+# Don't Include this Package
+# library(qdap) #text data manipulation
+
 set.seed(123)
 
 ```
@@ -49,6 +52,7 @@ real <- real %>%
   mutate(id = as.character(seq(1:4564)))
 combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type")) %>% 
   select(uuid, binary_type, type, title, text)
+
 
 # Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
 tidy_combined <- combined %>%
@@ -145,7 +149,7 @@ combined_sentiment <- tidy_combined %>%
 combined_sentiment
 
 #plot the sentiment score for each type of fake news
-ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for Each Type of Fake News", x = "Type of Fake News", y = "Sentiment Score")
+ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for All News", x = "Type of Fake News", y = "Sentiment Score")
 ```
 
 ```{r}
@@ -246,18 +250,23 @@ tidy_combined_final <- tidy_combined_a %>%
   select(-type)
 tidy_combined_final
 
+tidy_combined_final %>% 
+  filter(txt_type == 0) %>% 
+  summarise(n_negative = n())
+
 # Decision Tree Training Process
 n <- nrow(tidy_combined_final)
 train_id <- sample(1:n, size = round(n * 0.8))
 train <- tidy_combined_final[train_id,]
 test <- tidy_combined_final[-train_id,]
 
+
 tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative_score + positive_score, data = train)
 plot(as.party(tree))
 tree
 
 saveRDS(tree, file = "tree.rds")
-
+saveRDS(train, file = "train.rds")
 prediction <- predict(tree, test)
 
 test <- test %>% 
@@ -276,6 +285,7 @@ mylogit <- glm(txt_type ~ avgscore + n_words + n_positive, data = tidy_combined_
 #Omitted n_negative because this is colinear with n_negative
 summary(mylogit)
 plot(mylogit)
+
 ```
 
 ```{r}
@@ -304,5 +314,5 @@ ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) +
   xlab("Type of News (Real or Fake)") +
   ylab("Average Score") +
   ggtitle("Average Sentiment Scores in Real and Fake News") +
-  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 2.3)
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
 ```
