@@ -255,6 +255,8 @@ tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative
 plot(as.party(tree))
 tree
 
+saveRDS(tree, file = "tree.rds")
+
 prediction <- predict(tree, test)
 
 test <- test %>% 
