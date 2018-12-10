@@ -41,13 +41,13 @@ server <- function(input, output) {
       unnest_tokens(word, txt) 
   }) 
   
-  output$wordcloud <- renderPlot({
-    text_df %>%
-      anti_join(stop_words) %>%
-      count(word) %>%
-      with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
-
-  })
+  # output$wordcloud <- renderPlot({
+  #   text_df %>%
+  #     anti_join(stop_words) %>%
+  #     count(word) %>%
+  #     with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
+  # 
+  # })
   
   # Print the text that the user input
   output$text <- renderText({
@@ -69,7 +69,7 @@ server <- function(input, output) {
       summarise(n_positive = sum(score > 0), n_negative = sum(score < 0), avg_score = sum(score)/(n_negative + n_positive))
     print(text_df_summary)
    })
-  
+
   output$tree_plot <- renderPlot({
     plot(as.party(tree))
   })
