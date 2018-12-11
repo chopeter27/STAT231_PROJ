@@ -195,8 +195,11 @@ bing_word_counts %>%
   ggplot(aes(word, n, fill = sentiment)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~sentiment, scales = "free_y") +
-  labs(y = "Contribution to sentiment",
+  ggtitle("Positive and Negative Word Frequency") +
+  labs(y = "Frequency of Word",
        x = NULL) +
+  theme(text = element_text(size=20),
+        axis.text.x = element_text(angle=90, hjust=1)) +
   coord_flip()
 ```
 
@@ -311,6 +314,34 @@ ggplot(tidy_combined_final, aes(x = avgscore, fill = txt_type)) +
 ```
 
 ```{r}
+ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Average Score") +
+  ggtitle("Average Sentiment Scores in Real and Fake News") +
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+
+ggplot(tidy_combined_final, aes(x=txt_type, y=n_words)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Number of Words in Article") +
+  ggtitle("Number of Words in Real and Fake News") +
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+
+ggplot(tidy_combined_final, aes(x=txt_type, y=n_negative)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Average Score") +
+  ggtitle("Average Sentiment Scores in Real and Fake News") +
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+
+ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Average Score") +
+  ggtitle("Average Sentiment Scores in Real and Fake News") +
+  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+
 ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
   geom_boxplot() +
   xlab("Type of News (Real or Fake)") +
