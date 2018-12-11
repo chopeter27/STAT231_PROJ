@@ -198,7 +198,7 @@ bing_word_counts %>%
   ggtitle("Positive and Negative Word Frequency") +
   labs(y = "Frequency of Word",
        x = NULL) +
-  theme(text = element_text(size=20),
+  theme(text = element_text(size=30),
         axis.text.x = element_text(angle=90, hjust=1)) +
   coord_flip()
 ```
@@ -290,7 +290,6 @@ mylogit <- glm(txt_type ~ avgscore + n_words + n_positive, data = tidy_combined_
 #Omitted n_negative because this is colinear with n_negative
 summary(mylogit)
 plot(mylogit)
-
 ```
 
 ```{r}
@@ -326,26 +325,38 @@ ggplot(tidy_combined_final, aes(x=txt_type, y=n_words)) +
   xlab("Type of News (Real or Fake)") +
   ylab("Number of Words in Article") +
   ggtitle("Number of Words in Real and Fake News") +
-  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+  theme(text = element_text(size=30),
+        axis.text.x = element_text(angle=90, hjust=1))
 
 ggplot(tidy_combined_final, aes(x=txt_type, y=n_negative)) + 
   geom_boxplot() +
   xlab("Type of News (Real or Fake)") +
-  ylab("Average Score") +
-  ggtitle("Average Sentiment Scores in Real and Fake News") +
-  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+  ylab("Number of Negative Words") +
+  ggtitle("Number of Negative Words in Real and Fake News") +
+  theme(text = element_text(size=30),
+        axis.text.x = element_text(angle=90, hjust=1))
 
-ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
+ggplot(tidy_combined_final, aes(x=txt_type, y=n_positive)) + 
   geom_boxplot() +
   xlab("Type of News (Real or Fake)") +
-  ylab("Average Score") +
-  ggtitle("Average Sentiment Scores in Real and Fake News") +
-  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+  ylab("Number of Positive Words") +
+  ggtitle("Number of Positive Words in Real and Fake News") +
+  theme(text = element_text(size=30),
+        axis.text.x = element_text(angle=90, hjust=1))
 
-ggplot(tidy_combined_final, aes(x=txt_type, y=avgscore)) + 
+ggplot(tidy_combined_final, aes(x=txt_type, y=negative_score)) + 
   geom_boxplot() +
   xlab("Type of News (Real or Fake)") +
-  ylab("Average Score") +
-  ggtitle("Average Sentiment Scores in Real and Fake News") +
-  ggplot2::annotate(geom = "text", label = "Here, 0 represents fake news and 1 represents real news", x = 1.5, y = 3, size = 3.3)
+  ylab("Sum of Negative Word Scores") +
+  ggtitle("Sum of Negative Word Scores in Real and Fake News") +
+  theme(text = element_text(size=30),
+        axis.text.x = element_text(angle=90, hjust=1))
+
+ggplot(tidy_combined_final, aes(x=txt_type, y=positive_score)) + 
+  geom_boxplot() +
+  xlab("Type of News (Real or Fake)") +
+  ylab("Sum of Positive Word Scores") +
+  ggtitle("Sum of Positive Word Scores in Real and Fake News") +
+  theme(text = element_text(size=30),
+        axis.text.x = element_text(angle=90, hjust=1))
 ```
