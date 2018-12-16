@@ -1,12 +1,15 @@
 ---
-title: "Data Summary"
-author: "Andrea and Peter"
-date: "11/25/2018"
-output: html_document
+title: "Detecting Fake News Using Sentiment Analysis"
+author: "Andrea Boskovic and Peter Cho"
+date: "12/18/2018"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
-Load necessary packages
 ```{r setup, include=FALSE, echo = FALSE}
+# Loading necessary packages
+
 knitr::opts_chunk$set(echo = TRUE)
 # Tidying data packages
 library(ggplot2) #dynamic graphics
@@ -25,14 +28,10 @@ library(rpart) #tree modeling for classification
 library(partykit) #tree modeling
 library(pROC) #area under the curve
 
-# Don't Include this Package
-# library(qdap) #text data manipulation
-
+#Setting the seed for functions involving randomness
 set.seed(123)
-
 ```
 
-Basic Data Exploration:
 ```{r}
 # Loading the dataset
 fake <- read_csv("fake.csv") #all fake
@@ -53,9 +52,9 @@ real <- real %>%
   mutate(id = as.character(seq(1:4564))) %>%
   mutate(realtype = "real")
 
+# Making a combined dataset with both fake and real articles and selecting only for the uuid (unique identifier for each article), binary_type (0 for fake and 1 for real), type (type of news: bs, bias, conspiracy, real, etc.), title (title of the article), and text (text of the article) columns.
 combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type", "type" = "realtype")) %>% 
   select(uuid, binary_type, type, title, text)
-
 
 # Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
 tidy_combined <- combined %>%
@@ -63,7 +62,9 @@ tidy_combined <- combined %>%
 ```
 
 ```{r}
-#See how many observations are in each type of fake news
+# Basic Data Exploration:
+
+# This allows us to see how many observations are in each type of fake news.
 combined %>% 
   group_by(type) %>% 
   summarize(n = n())
@@ -73,10 +74,10 @@ typetotals <- combined %>%
 ```
 
 ```{r}
-#what are the most common words for each basic emotion?
-#we will use the nrc dictionary so these emotions are the following: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust
+# What are the most common words for each basic emotion?
+# We will use the nrc lexicon to categorize each documented word into on of the basic human emotions cataloged in the lexicon: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust.
 
-#anger
+# Anger
 nrc_anger <- get_sentiments("nrc") %>% 
   filter(sentiment == "anger")
 
@@ -84,7 +85,7 @@ tidy_combined %>%
   inner_join(nrc_anger) %>%
   count(word, sort = TRUE)
 
-#fear
+# Fear
 nrc_fear <- get_sentiments("nrc") %>% 
   filter(sentiment == "fear")
 
@@ -92,7 +93,7 @@ tidy_combined %>%
   inner_join(nrc_fear) %>%
   count(word, sort = TRUE)
 
-#anticipation
+# Anticipation
 nrc_anticipation <- get_sentiments("nrc") %>% 
   filter(sentiment == "anticipation")
 
@@ -100,7 +101,7 @@ tidy_combined %>%
   inner_join(nrc_anticipation) %>%
   count(word, sort = TRUE)
 
-#trust
+# Trust
 nrc_trust <- get_sentiments("nrc") %>% 
   filter(sentiment == "trust")
 
@@ -108,7 +109,7 @@ tidy_combined %>%
   inner_join(nrc_trust) %>%
   count(word, sort = TRUE)
 
-#surprise
+# Surprise
 nrc_surprise <- get_sentiments("nrc") %>% 
   filter(sentiment == "surprise")
 
@@ -116,7 +117,7 @@ tidy_combined %>%
   inner_join(nrc_surprise) %>%
   count(word, sort = TRUE)
 
-#sadness
+# Sadness
 nrc_sadness <- get_sentiments("nrc") %>% 
   filter(sentiment == "sadness")
 
@@ -124,7 +125,7 @@ tidy_combined %>%
   inner_join(nrc_sadness) %>%
   count(word, sort = TRUE)
 
-#joy
+# Joy
 nrc_joy <- get_sentiments("nrc") %>% 
   filter(sentiment == "joy")
 
@@ -132,7 +133,7 @@ tidy_combined %>%
   inner_join(nrc_joy) %>%
   count(word, sort = TRUE)
 
-#disgust
+# Disgust
 nrc_disgust <- get_sentiments("nrc") %>% 
   filter(sentiment == "disgust")
 
@@ -142,8 +143,8 @@ tidy_combined %>%
 ```
 
 ```{r}
-#find net sentiment for each type of fake news documented in the dataset using the bing lexicon
-#note that some types, such as bs (>400000), have more corresponding observations than other types, such as fake(<400)
+# Find net sentiment for each type of fake news documented in the dataset using the bing lexicon. The bing lexicon simply categorizes documented words as "positive" or "negative".
+# Note that some types, such as bs (> 400,000), have more corresponding observations than other types, such as fake(< 400)
 combined_sentiment <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(type, sentiment) %>%
@@ -151,37 +152,38 @@ combined_sentiment <- tidy_combined %>%
   mutate(sentiment = positive - negative)
 combined_sentiment
 
-#plot the sentiment score for each type of fake news
+# Plot of the sentiment score for each type of news
 ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for All News", x = "Type of News", y = "Sentiment Score")
 ```
 
 ```{r}
-#we can also get the sentiment score on a scale of -5 to 5 from the afinn lexicon
+# We can also get the sentiment score on a scale of -5 to 5 from the AFINN lexicon. The AFINN lexicon has words documented as -5 being the most negative and 5 being the most positive.
 afinn <- tidy_combined %>% 
   inner_join(get_sentiments("afinn")) %>% 
   group_by(type) %>% 
   summarise(sentiment = sum(score)) %>% 
   mutate(method = "AFINN")
 afinn
-
 ```
 
 ```{r}
-#positive and negative words in nrc lexicon
+# It may be useful to investigate the basic contents of the lexicons.
+
+# Positive and negative words in nrc lexicon
 get_sentiments("nrc") %>% 
      filter(sentiment %in% c("positive", 
                              "negative")) %>% 
   count(sentiment)
 
-#positive and negative words in bing lexicon
+# Positive and negative words in bing lexicon
 get_sentiments("bing") %>% 
   count(sentiment)
 
-#both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexon. This can contribute to the results we see in our data
+# Both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexicon. This may contribute to the results we see in our data.
 ```
 
 ```{r}
-#counting most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon
+# Counting the most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon.
 bing_word_counts <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -205,13 +207,13 @@ bing_word_counts %>%
 ```
 
 ```{r}
-#wordcloud with most frqeuently appearing words
+# Wordcloud with most frqeuently appearing words
 tidy_combined %>%
   anti_join(stop_words) %>%
   count(word) %>%
   with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
 
-#wordcloud faceted into positive and negative with color (blue = negative, red = positive)
+# Wordcloud faceted into positive and negative with color (blue corresponds to a negative sentiment while red corresponds to a positive sentiment).
 tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -220,15 +222,16 @@ tidy_combined %>%
                    max.words = 100)
 ```
 
-Now, it is time to start the machine learning aspect of the project.
 ```{r}
-#using afinn lexicon to append the sentiment score of each word to tidy_fake 
+# Now, it is time to start the machine learning aspect of the project.
+
+# Using the AFINN lexicon to append the sentiment score of each word to a new dataset called tidy_combined_a.
 tidy_combined_a <- tidy_combined %>% 
   inner_join(get_sentiments("afinn"))
 ```
 
 ```{r}
-#categorize article as positive or negative overall
+# Categorize article as positive or negative overall based on the average of the AFINN score of the words in the article. Note that we can only categorize words as positive or negative if they are documented in the AFINN lexicon. This is also true for analysis within other lexicons that we have previously completed.
 tidy_combined_final <- tidy_combined_a %>%
   select(uuid, score, binary_type) %>% 
   group_by(uuid) %>%
@@ -248,7 +251,7 @@ tidy_combined_final %>%
   filter(txt_type == 0) %>% 
   summarise(n_negative = n())
 
-# Decision Tree Training Process
+# Decision tree training process
 n <- nrow(tidy_combined_final)
 train_id <- sample(1:n, size = round(n * 0.8))
 train <- tidy_combined_final[train_id,]
@@ -268,72 +271,63 @@ test <- test %>%
 roc_obj <- roc(test$txt_type, test$prediction)
 auc(roc_obj)
 plot(roc_obj)
-```
-Based on this tree, we can see that none of the predictors (average score, number of words, number of positive words, and number of number of negative words) are userful in predicting whether an article is real or fake.
 
-Why is this true? Below, we will do some exploration using visualizations to display the poor relationship between our predictions and type of article (real or fake).
-
-```{r}
-#Making a logistic regression model for txt_type
-mylogit <- glm(txt_type ~ avgscore + n_words + n_positive, data = tidy_combined_final, family = "binomial")
-#Omitted n_negative because this is colinear with n_negative
-summary(mylogit)
-plot(mylogit)
+# Based on this tree, we can see that none of the predictors (average score, number of words, number of positive words, and number of number of negative words) are userful in predicting whether an article is real or fake.
 ```
 
 ```{r}
-ggplot(tidy_combined_final, aes(n_words, as.numeric(txt_type)-1, color=articlesent)) +
-  stat_smooth(method="glm", formula=y~x, alpha=0.2, size=2, aes(fill=articlesent)) +
-  geom_point(position=position_jitter(height=0.03, width=0)) +
-  xlab("Number of Words") + 
-  ylab("Probability (Real)") + 
-  ggtitle("Probability of a Real Article Based on Number of Words and Article Sentiment") +
-  scale_color_discrete(name = "Article Sentiment") +
-  scale_fill_discrete(guide = FALSE)
-```
+# Why is this true? Below, we will do some exploration using visualizations to display the poor relationship between our predictions and type of article (real or fake).
 
-```{r}
+# Histogram of Average Sentiment Score by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = avgscore, fill = txt_type)) +
   geom_histogram() +
   xlab("Average Score") + 
   ylab("Count") + 
   ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
-```
 
-```{r}
+# Histogram of Number of Words by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = n_words, fill = txt_type)) +
   geom_histogram() +
-  xlab("Average Score") + 
+  xlim(0, 500) +
+  xlab("Number of Words") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Number of Words by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
 
+# Histogram of Number of Negative Words by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = n_negative, fill = txt_type)) +
   geom_histogram() +
-  xlab("Average Score") + 
+  xlim(0, 250) +
+  xlab("Number of Negative Words") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Number of Negative Words by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
 
+# Histogram of Number of Positive Words by News Type (Real and Fake
 ggplot(tidy_combined_final, aes(x = n_positive, fill = txt_type)) +
   geom_histogram() +
-  xlab("Average Score") + 
+  xlim(0, 250) +
+  xlab("Number of Positive Words") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Number of Positive Words by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
 
+# Histogram of Total Negative Score by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = negative_score, fill = txt_type)) +
   geom_histogram() +
-  xlab("Average Score") + 
+  xlim(-500, 0) +
+  xlab("Total Negative Score") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Total Negative Score by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
 
+# Histogram of Total Positive Score by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = positive_score, fill = txt_type)) +
   geom_histogram() +
-  xlab("Average Score") + 
+  xlim(0, 500) +
+  xlab("Total Positive Score") + 
   ylab("Count") + 
-  ggtitle("Histogram of Average Sentiment Score by News Type (Real and Fake)") +
+  ggtitle("Histogram of Total Positive Score by News Type (Real and Fake)") +
   scale_fill_discrete(name = "Real or Fake News", labels = c("Fake", "Real"))
 ```
