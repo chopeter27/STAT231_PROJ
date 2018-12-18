@@ -3,8 +3,8 @@ title: "Detecting Fake News Using Sentiment Analysis"
 author: "Andrea Boskovic and Peter Cho"
 date: "12/18/2018"
 output:
-  pdf_document: default
-  html_document: default
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 ```{r setup, include=FALSE, echo = FALSE}

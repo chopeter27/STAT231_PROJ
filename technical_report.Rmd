@@ -3,8 +3,8 @@ title: "Technical Appendix"
 author: "Andrea Boskovic and Peter Cho"
 date: "12/18/2018"
 output:
-  pdf_document: default
-  html_document: default
+  pdf_document:
+    latex_engine: xelatex
 ---
 
 Abstract: 
