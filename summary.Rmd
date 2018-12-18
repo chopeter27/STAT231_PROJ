@@ -7,10 +7,11 @@ output:
     latex_engine: xelatex
 ---
 
-```{r setup, include=FALSE, echo = FALSE}
+```{r setup, include = TRUE, message = FALSE}
 # Loading necessary packages
 
 knitr::opts_chunk$set(echo = TRUE)
+
 # Tidying data packages
 library(ggplot2) #dynamic graphics
 library(tidyr) #data tidying
@@ -32,7 +33,7 @@ library(pROC) #area under the curve
 set.seed(123)
 ```
 
-```{r}
+```{r, message = FALSE}
 # Loading the dataset
 fake <- read_csv("fake.csv") #all fake
 real <- read_csv("Articles.csv") #all real
@@ -59,6 +60,7 @@ combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading"
 # Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
 tidy_combined <- combined %>%
   unnest_tokens(word, text)
+head(tidy_combined)
 ```
 
 ```{r}
@@ -71,9 +73,10 @@ combined %>%
 typetotals <- combined %>% 
   group_by(type) %>% 
   summarize(n = n())
+typetotals
 ```
 
-```{r}
+```{r, message = FALSE}
 # What are the most common words for each basic emotion?
 # We will use the nrc lexicon to categorize each documented word into on of the basic human emotions cataloged in the lexicon: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust.
 
@@ -83,7 +86,8 @@ nrc_anger <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_anger) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Fear
 nrc_fear <- get_sentiments("nrc") %>% 
@@ -91,7 +95,8 @@ nrc_fear <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_fear) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Anticipation
 nrc_anticipation <- get_sentiments("nrc") %>% 
@@ -99,7 +104,8 @@ nrc_anticipation <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_anticipation) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Trust
 nrc_trust <- get_sentiments("nrc") %>% 
@@ -107,7 +113,8 @@ nrc_trust <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_trust) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Surprise
 nrc_surprise <- get_sentiments("nrc") %>% 
@@ -115,7 +122,8 @@ nrc_surprise <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_surprise) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Sadness
 nrc_sadness <- get_sentiments("nrc") %>% 
@@ -123,7 +131,8 @@ nrc_sadness <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_sadness) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Joy
 nrc_joy <- get_sentiments("nrc") %>% 
@@ -131,7 +140,8 @@ nrc_joy <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_joy) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Disgust
 nrc_disgust <- get_sentiments("nrc") %>% 
@@ -139,10 +149,11 @@ nrc_disgust <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_disgust) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 ```
 
-```{r}
+```{r, message = FALSE}
 # Find net sentiment for each type of fake news documented in the dataset using the bing lexicon. The bing lexicon simply categorizes documented words as "positive" or "negative".
 # Note that some types, such as bs (> 400,000), have more corresponding observations than other types, such as fake(< 400)
 combined_sentiment <- tidy_combined %>%
@@ -163,7 +174,7 @@ afinn <- tidy_combined %>%
   group_by(type) %>% 
   summarise(sentiment = sum(score)) %>% 
   mutate(method = "AFINN")
-afinn
+head(afinn)
 ```
 
 ```{r}
@@ -182,13 +193,13 @@ get_sentiments("bing") %>%
 # Both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexicon. This may contribute to the results we see in our data.
 ```
 
-```{r}
+```{r, message = FALSE}
 # Counting the most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon.
 bing_word_counts <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
-bing_word_counts
+head(bing_word_counts)
 
 bing_word_counts %>%
   group_by(sentiment) %>%
@@ -206,7 +217,7 @@ bing_word_counts %>%
   coord_flip()
 ```
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 # Wordcloud with most frqeuently appearing words
 tidy_combined %>%
   anti_join(stop_words) %>%
@@ -222,9 +233,8 @@ tidy_combined %>%
                    max.words = 100)
 ```
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 # Now, it is time to start the machine learning aspect of the project.
-
 # Using the AFINN lexicon to append the sentiment score of each word to a new dataset called tidy_combined_a.
 tidy_combined_a <- tidy_combined %>% 
   inner_join(get_sentiments("afinn"))
@@ -245,7 +255,7 @@ tidy_combined_final <- tidy_combined_a %>%
   mutate(articlesent = ifelse(avgscore < 0, "Negative", "Positive")) %>% 
   mutate(txt_type = as.factor(type)) %>%
   select(-type)
-tidy_combined_final
+head(tidy_combined_final)
 
 tidy_combined_final %>% 
   filter(txt_type == 0) %>% 
@@ -262,8 +272,6 @@ tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative
 plot(as.party(tree))
 tree
 
-saveRDS(tree, file = "tree.rds")
-saveRDS(train, file = "train.rds")
 prediction <- predict(tree, test)
 
 test <- test %>% 
@@ -275,7 +283,7 @@ plot(roc_obj)
 # Based on this tree, we can see that none of the predictors (average score, number of words, number of positive words, and number of number of negative words) are userful in predicting whether an article is real or fake.
 ```
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 # Why is this true? Below, we will do some exploration using visualizations to display the poor relationship between our predictions and type of article (real or fake).
 
 # Histogram of Average Sentiment Score by News Type (Real and Fake)
