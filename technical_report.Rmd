@@ -20,7 +20,7 @@ Data:
 
   Before importing in the news datasets, we loaded packages in R to work with text-based data. Our initial cluster of packages provided the classic data tidying and wrangling functions. The following cluster included text specific packages such as text mining (TM) to parse through lists of texts and sort through words.
 
-```{r setup, include=FALSE}
+```{r setup, include = TRUE, message = FALSE}
 # Loading required pacakges
 knitr::opts_chunk$set(echo = TRUE)
 # Tidying data packages
@@ -43,7 +43,7 @@ library(pROC) #area under the curve
 
   Three datasets containing fake or real news articles and traits about these articles were taken from Kaggle to create a larger dataset. These datasets included information about the validity of the news and had a variable that either binarized news as real or fake or categorized news as some subcategory of real or fake (i.e. bias, conspiracy, bs). We added a variable that converted these subcategories into either real or fake to allow joining of all three datasets. We selected for this binary variable, the subcategory of the binary variable, the article text, the article id, and the article title from each dataset. To eventually perform sentiment analysis, we used a function to separate individual words from a chunk of text and made each word in the article a new variable.
 
-```{r}
+```{r, message = FALSE}
 # Loading the dataset
 fake <- read_csv("fake.csv") #all fake
 real <- read_csv("Articles.csv") #all real
@@ -70,6 +70,7 @@ combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading"
 # Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
 tidy_combined <- combined %>%
   unnest_tokens(word, text)
+head(tidy_combined)
 ```
 
   We observed the number of fake and real type news and saw that 73% of the dataset consisted of fake news.
@@ -82,11 +83,12 @@ combined %>%
 typetotals <- combined %>% 
   group_by(type) %>% 
   summarize(n = n())
+typetotals
 ```
 
   In order to observe any trend in the emotions of news articles, we used sentiment lexicons. These lexicons are datasets containing lists of words with an associated sentiment and/or metric to rate the positivity or negativity of the word. The three lexicons we applied to our dataset were nrc, bing, and AFINN. The nrc lexicon categorized words based on the eight basic emotions (fear, disgust, trust, anger, anticipation, surprise, sadness, joy) and included a binary sentiment that was positive or negative.
 
-```{r}
+```{r, message = FALSE}
 # What are the most common words for each basic emotion?
 # We will use the nrc lexicon to categorize each documented word into on of the basic human emotions cataloged in the lexicon: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust.
 
@@ -96,7 +98,8 @@ nrc_anger <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_anger) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Fear
 nrc_fear <- get_sentiments("nrc") %>% 
@@ -104,7 +107,8 @@ nrc_fear <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_fear) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Anticipation
 nrc_anticipation <- get_sentiments("nrc") %>% 
@@ -112,7 +116,8 @@ nrc_anticipation <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_anticipation) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Trust
 nrc_trust <- get_sentiments("nrc") %>% 
@@ -120,7 +125,8 @@ nrc_trust <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_trust) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Surprise
 nrc_surprise <- get_sentiments("nrc") %>% 
@@ -128,7 +134,8 @@ nrc_surprise <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_surprise) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Sadness
 nrc_sadness <- get_sentiments("nrc") %>% 
@@ -136,7 +143,8 @@ nrc_sadness <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_sadness) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Joy
 nrc_joy <- get_sentiments("nrc") %>% 
@@ -144,7 +152,8 @@ nrc_joy <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_joy) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 
 # Disgust
 nrc_disgust <- get_sentiments("nrc") %>% 
@@ -152,12 +161,13 @@ nrc_disgust <- get_sentiments("nrc") %>%
 
 tidy_combined %>%
   inner_join(nrc_disgust) %>%
-  count(word, sort = TRUE)
+  count(word, sort = TRUE) %>%
+  head(n = 10)
 ```
 
   The bing lexicon solely applied a binary sentiment of either positive or negative. With this lexicon, we attempted to find differences in the total sentiment value between the subcategory of news. The total sentiment value was calculated by subtracting the total number of positive words by the number of negative words in each category. 
 
-```{r}
+```{r, message = FALSE}
 # Find net sentiment for each type of fake news documented in the dataset using the bing lexicon. The bing lexicon simply categorizes documented words as "positive" or "negative".
 # Note that some types, such as bs (> 400,000), have more corresponding observations than other types, such as fake(< 400)
 combined_sentiment <- tidy_combined %>%
@@ -180,7 +190,7 @@ afinn <- tidy_combined %>%
   group_by(type) %>% 
   summarise(sentiment = sum(score)) %>% 
   mutate(method = "AFINN")
-afinn
+head(afinn)
 ```
 
 Since the nrc and bing lexicons could binarize a word as either positive or negative, we measured the ratio of positive to negative words in each lexicon to test for any skew. Both lexicons have more negative words than positive words, but the bing lexicon has a higher ratio of negative to positive words than the nrc lexon. 
@@ -199,13 +209,13 @@ get_sentiments("bing") %>%
 
   Another factor we observed in our data was the frequency of words. We removed words that were frequent in most text and provided little information by filtering out stop words (i.e. “the”, “I”, “a”, etc.). We then selected for words that were part of the bing lexicon and created a word cloud to visualize the frequency and divide between positive and negative words. We then graphed a bar chart to record the number of times a word was mentioned and found the frequency of words “trump” and “like” to be most common among positive words. We assumed that the high frequency was in reference to President Trump and the use of “like” to not mean the things one prefers. 
 
-```{r}
+```{r, message = FALSE}
 # Counting the most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon.
 bing_word_counts <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
   ungroup()
-bing_word_counts
+head(bing_word_counts)
 
 bing_word_counts %>%
   group_by(sentiment) %>%
@@ -223,12 +233,12 @@ bing_word_counts %>%
   coord_flip()
 ```
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 # Wordcloud with most frqeuently appearing words
 tidy_combined %>%
   anti_join(stop_words) %>%
   count(word) %>%
-  with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order=FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
+  with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order = FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
 
 # Wordcloud faceted into positive and negative with color (blue corresponds to a negative sentiment while red corresponds to a positive sentiment).
 tidy_combined %>%
@@ -240,7 +250,7 @@ tidy_combined %>%
 ```
 
 Results:
-```{r}
+```{r, warning = FALSE, message = FALSE}
 # Now, it is time to start the machine learning aspect of the project.
 # Using the AFINN lexicon to append the sentiment score of each word to a new dataset called tidy_combined_a.
 tidy_combined_a <- tidy_combined %>% 
@@ -266,7 +276,7 @@ tidy_combined_final <- tidy_combined_a %>%
   mutate(articlesent = ifelse(avgscore < 0, "Negative", "Positive")) %>% 
   mutate(txt_type = as.factor(type)) %>%
   select(-type)
-tidy_combined_final
+head(tidy_combined_final)
 
 tidy_combined_final %>% 
   filter(txt_type == 0) %>% 
@@ -283,8 +293,6 @@ tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative
 plot(as.party(tree))
 tree
 
-saveRDS(tree, file = "tree.rds")
-saveRDS(train, file = "train.rds")
 prediction <- predict(tree, test)
 
 test <- test %>% 
@@ -300,7 +308,7 @@ Diagnostics:
 
   The decision tree from our final model had only one node, meaning that our predictors based on sentiment analysis were not useful in predicting whether an article was real or fake. In order to qualify our results, we investigated the relationship between each of our predictor variables with our outcome variable, the validity of the article.
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 # Why is our model unsuccessful? Below, we will do some exploration using visualizations to display the poor relationship between our predictions and type of article (real or fake).
 
 # Histogram of Average Sentiment Score by News Type (Real and Fake)
