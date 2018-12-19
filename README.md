@@ -1,5 +1,7 @@
 Detecting Fake News Using Sentiment Analysis
+
 Andrea Boskovic and Peter Cho
+
 This is our final project for Data Science. We attempted to create a model that would classify news as either fake or real based on the sentiment words in an article’s text.
 
 To begin, download the files in the Github Repo. The R markdown file that will run you through our project building process is titled, “technical_report.Rmd”. Simply run this document in entirety to see our final model. 
