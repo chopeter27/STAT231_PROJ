@@ -7,22 +7,23 @@ output:
     latex_engine: xelatex
 ---
 
-Abstract: 
+# Abstract: 
 
   In order to categorize an article as real or fake, we joined three datasets containing both real and fake news and used a machine learning algorithm. We trained this data based on the number of words, number of positively categorized words, number of negatively categorized words, maximum negative score, maximum positive score, and AFINN lexicon score of the article which represents a range of negativity and positivity of sentiment. We found the article’s AFINN value by decomposing the article into individual words and then averaging the AFINN scores of each word in every article. Using the decision tree learning algorithm, we attempted to find the best threshold for our selected predictors that correlates with fake or real news. However, our decision tree only had one node, meaning that the predictors were not useful in predicting an article’s validity.
 
-Introduction:
+# Introduction:
 
   Modern day media does not always make honest claims or provide truthful sources. The ease of access to the internet has led to the widespread creation and distribution of fake news, leaving readers to question the validity of the news they are reading. To prevent further disinformation, we sought to find a pattern between fake and real news. When we were reading news articles that were considered fake, we noticed a trend of extreme word choices and hypothesized that fake articles would contain more emotionally charged words than real articles. Following this assumption, we sought to create a supervised machine learning model that would classify news as real or fake based on the sentiment of the article text. 
   For the supervised model, we needed to create a training dataset and chose datasets containing articles that distinguished between real or fake news based on the validity of the article’s sources and the claims stated. We filtered the article text for the sentiment words and created predictors from the sentiment values we obtained. Using these predictors, we trained a decision tree model to find some relationship between the sentiment predictors and article validity but found none. To further investigate why our model failed, we looked at the relationship between each predictor variable and the response variable and found no significant difference between news categorized as real or fake. 
 
-Data: 
+# Data: 
 
   Before importing in the news datasets, we loaded packages in R to work with text-based data. Our initial cluster of packages provided the classic data tidying and wrangling functions. The following cluster included text specific packages such as text mining (TM) to parse through lists of texts and sort through words.
 
 ```{r setup, include = TRUE, message = FALSE}
+
 # Loading required pacakges
-knitr::opts_chunk$set(echo = TRUE)
+
 # Tidying data packages
 library(ggplot2) #dynamic graphics
 library(tidyr) #data tidying
@@ -43,7 +44,7 @@ library(pROC) #area under the curve
 
   Three datasets containing fake or real news articles and traits about these articles were taken from Kaggle to create a larger dataset. These datasets included information about the validity of the news and had a variable that either binarized news as real or fake or categorized news as some subcategory of real or fake (i.e. bias, conspiracy, bs). We added a variable that converted these subcategories into either real or fake to allow joining of all three datasets. We selected for this binary variable, the subcategory of the binary variable, the article text, the article id, and the article title from each dataset. To eventually perform sentiment analysis, we used a function to separate individual words from a chunk of text and made each word in the article a new variable.
 
-```{r, message = FALSE}
+```{r, message = FALSE, tidy = TRUE}
 # Loading the dataset
 fake <- read_csv("fake.csv") #all fake
 real <- read_csv("Articles.csv") #all real
@@ -58,16 +59,23 @@ fake <- fake %>%
   mutate(binary_type = ifelse(type %in% fake_type, 0, 1)) #now fake = 0 and real = 1
 new_ds <- new_ds %>% 
   filter(Label == 1)
-real <- full_join(real, new_ds, by = c("Heading" = "Headline", "Article" = "Body", "binary_type" = "Label"))
+real <- full_join(real, new_ds, by = c("Heading" = "Headline", "Article" = "Body", 
+                                       "binary_type" = "Label"))
 real <- real %>% 
   mutate(id = as.character(seq(1:4564))) %>%
   mutate(realtype = "real")
 
-# Making a combined dataset with both fake and real articles and selecting only for the uuid (unique identifier for each article), binary_type (0 for fake and 1 for real), type (type of news: bs, bias, conspiracy, real, etc.), title (title of the article), and text (text of the article) columns.
-combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", "uuid" = "id", "binary_type" = "binary_type", "type" = "realtype")) %>% 
+# Making a combined dataset with both fake and real articles and selecting only for the 
+# uuid (unique identifier for each article), binary_type (0 for fake and 1 for real), type 
+# (type of news: bs, bias, conspiracy, real, etc.), title (title of the article), and text 
+# (text of the article) columns.
+combined <- full_join(fake, real, by = c("text" = "Article", "title" = "Heading", 
+                                         "uuid" = "id", "binary_type" = "binary_type", 
+                                         "type" = "realtype")) %>% 
   select(uuid, binary_type, type, title, text)
 
-# Making a tidy dataset where we have the the words in their own column for facilitated data analysis and exploration
+# Making a tidy dataset where we have the the words in their own column for facilitated 
+# data analysis and exploration
 tidy_combined <- combined %>%
   unnest_tokens(word, text)
 head(tidy_combined)
@@ -90,7 +98,9 @@ typetotals
 
 ```{r, message = FALSE}
 # What are the most common words for each basic emotion?
-# We will use the nrc lexicon to categorize each documented word into on of the basic human emotions cataloged in the lexicon: anger, fear, anticipation, trust, surprise, sadness, joy, and disgust.
+# We will use the nrc lexicon to categorize each documented word into on of the basic 
+# human emotions cataloged in the lexicon: anger, fear, anticipation, trust, surprise, 
+# sadness, joy, and disgust.
 
 # Anger
 nrc_anger <- get_sentiments("nrc") %>% 
@@ -168,8 +178,11 @@ tidy_combined %>%
   The bing lexicon solely applied a binary sentiment of either positive or negative. With this lexicon, we attempted to find differences in the total sentiment value between the subcategory of news. The total sentiment value was calculated by subtracting the total number of positive words by the number of negative words in each category. 
 
 ```{r, message = FALSE}
-# Find net sentiment for each type of fake news documented in the dataset using the bing lexicon. The bing lexicon simply categorizes documented words as "positive" or "negative".
-# Note that some types, such as bs (> 400,000), have more corresponding observations than other types, such as fake(< 400)
+# Find net sentiment for each type of fake news documented in the dataset using the bing 
+# lexicon. The bing lexicon simply categorizes documented words as "positive" or 
+# "negative".
+# Note that some types, such as bs (> 400,000), have more corresponding observations than 
+# other types, such as fake(< 400)
 combined_sentiment <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(type, sentiment) %>%
@@ -178,13 +191,16 @@ combined_sentiment <- tidy_combined %>%
 combined_sentiment
 
 # Plot of the sentiment score for each type of news
-ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + labs(title = "Sentiment Score for All News", x = "Type of News", y = "Sentiment Score")
+ggplot(combined_sentiment, aes(x = type, y = sentiment)) + geom_col() + 
+  labs(title = "Sentiment Score for All News", x = "Type of News", y = "Sentiment Score")
 ```
 
   Based on this visualization of the data, we observed a markedly negative value for the “bs” subcategory of fake news and a clear positive value for real news. 
 
 ```{r}
-# We can also get the sentiment score on a scale of -5 to 5 from the AFINN lexicon. The AFINN lexicon has words documented as -5 being the most negative and 5 being the most positive.
+# We can also get the sentiment score on a scale of -5 to 5 from the AFINN lexicon. 
+# The AFINN lexicon has words documented as -5 being the most negative and 5 being the 
+# most positive.
 afinn <- tidy_combined %>% 
   inner_join(get_sentiments("afinn")) %>% 
   group_by(type) %>% 
@@ -210,7 +226,8 @@ get_sentiments("bing") %>%
   Another factor we observed in our data was the frequency of words. We removed words that were frequent in most text and provided little information by filtering out stop words (i.e. “the”, “I”, “a”, etc.). We then selected for words that were part of the bing lexicon and created a word cloud to visualize the frequency and divide between positive and negative words. We then graphed a bar chart to record the number of times a word was mentioned and found the frequency of words “trump” and “like” to be most common among positive words. We assumed that the high frequency was in reference to President Trump and the use of “like” to not mean the things one prefers. 
 
 ```{r, message = FALSE}
-# Counting the most frequently appearing words and which sentiment they correspond to (positive or negative) from the bing lexicon.
+# Counting the most frequently appearing words and which sentiment they correspond to 
+# (positive or negative) from the bing lexicon.
 bing_word_counts <- tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -228,8 +245,7 @@ bing_word_counts %>%
   ggtitle("Positive and Negative Word Frequency") +
   labs(y = "Frequency of Word",
        x = NULL) +
-  theme(text = element_text(size=30),
-        axis.text.x = element_text(angle=90, hjust=1)) +
+  theme(axis.text.x = element_text(angle=90, hjust=1)) +
   coord_flip()
 ```
 
@@ -238,9 +254,11 @@ bing_word_counts %>%
 tidy_combined %>%
   anti_join(stop_words) %>%
   count(word) %>%
-  with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, random.order = FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
+  with(wordcloud(words = word, freq = n, max.words = 100, min.freq = 1, 
+                 random.order = FALSE, rot.per = 0.35, colors = brewer.pal(8, "Dark2")))
 
-# Wordcloud faceted into positive and negative with color (blue corresponds to a negative sentiment while red corresponds to a positive sentiment).
+# Wordcloud faceted into positive and negative with color (blue corresponds to a negative 
+# sentiment while red corresponds to a positive sentiment).
 tidy_combined %>%
   inner_join(get_sentiments("bing")) %>%
   count(word, sentiment, sort = TRUE) %>%
@@ -249,10 +267,13 @@ tidy_combined %>%
                    max.words = 100)
 ```
 
-Results:
+
+
+# Results:
 ```{r, warning = FALSE, message = FALSE}
 # Now, it is time to start the machine learning aspect of the project.
-# Using the AFINN lexicon to append the sentiment score of each word to a new dataset called tidy_combined_a.
+# Using the AFINN lexicon to append the sentiment score of each word to a new dataset 
+# called tidy_combined_a.
 tidy_combined_a <- tidy_combined %>% 
   inner_join(get_sentiments("afinn"))
 ```
@@ -262,7 +283,10 @@ tidy_combined_a <- tidy_combined %>%
 	Since we saw a seemingly strong relationship between sentiment score from the AFINN lexicon and the type of news (i.e., real, bs, conspiracy) in our data visualization, we added a two more predictors that were indicative of sentiment: negative score and positive score. These values represent the total negativity and positivity, respectively, of an article. We calculated this by filtering for all negatively and positively scored words, according to the AFINN lexicon, in each article, and then summing the scores of all the negative words in an article and all the positive words in an article. 
 
 ```{r}
-# Categorize article as positive or negative overall based on the average of the AFINN score of the words in the article. Note that we can only categorize words as positive or negative if they are documented in the AFINN lexicon. This is also true for analysis within other lexicons that we have previously completed.
+# Categorize article as positive or negative overall based on the average of the AFINN 
+# score of the words in the article. Note that we can only categorize words as positive 
+# or negative if they are documented in the AFINN lexicon. This is also true for analysis 
+# within other lexicons that we have previously completed.
 tidy_combined_final <- tidy_combined_a %>%
   select(uuid, score, binary_type) %>% 
   group_by(uuid) %>%
@@ -289,7 +313,8 @@ train <- tidy_combined_final[train_id,]
 test <- tidy_combined_final[-train_id,]
 
 
-tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative_score + positive_score, data = train)
+tree <- rpart(txt_type ~ avgscore + n_words + n_positive + n_negative + negative_score + 
+                positive_score, data = train)
 plot(as.party(tree))
 tree
 
@@ -304,12 +329,14 @@ plot(roc_obj)
 
   Despite our efforts to make a useful model that can differentiate between real and fake articles, even our final model that used average score, number of words, number of positive words, number of negative words, positive score, and negative score to predict the type of article, our decision tree still had only one node. Likewise, the Sensitivity-Specificity Curve had a straight line and thus an AUC, or area under the curve, of 0.5, the lowest possible AUC value. Our sentiment analysis of articles was unable to predict whether an article was real or fake, so we ultimately found no evidence that our predictors are associated with an article being real or fake. 
 
-Diagnostics: 
+# Diagnostics: 
 
   The decision tree from our final model had only one node, meaning that our predictors based on sentiment analysis were not useful in predicting whether an article was real or fake. In order to qualify our results, we investigated the relationship between each of our predictor variables with our outcome variable, the validity of the article.
 
 ```{r, message = FALSE, warning = FALSE}
-# Why is our model unsuccessful? Below, we will do some exploration using visualizations to display the poor relationship between our predictions and type of article (real or fake).
+# Why is our model unsuccessful? Below, we will do some exploration using visualizations 
+# to display the poor relationship between our predictions and type of article (real or 
+# fake).
 
 # Histogram of Average Sentiment Score by News Type (Real and Fake)
 ggplot(tidy_combined_final, aes(x = avgscore, fill = txt_type)) +
@@ -370,7 +397,7 @@ ggplot(tidy_combined_final, aes(x = positive_score, fill = txt_type)) +
 	Likewise, in the histogram of total positive score by news type shows similarly shaped distributions for real and fake news, with fake news having a larger amount of total observations. Unlike the histogram for average sentiment score, however, this histogram is skewed to the right because most articles, regardless of article validity, seem to have a total positive score of approximately twenty with a decreasing amount of positive scores present in each category of news, fake and real.
 	Similar trends are present in the relationship between the other predictors and news categorized as real or fake.
 
-Conlusion:
+# Conclusion:
 
   In this project, we attempted to classify articles as real or fake based on various indicators of an article’s sentiment. Our initial model, which only used the average sentiment score of an article, failed to predict whether it was real or fake. While our final model included more predictors, such as number of words, number of positive words, number of negative words, positive score, and negative score, this too failed at predicting the validity of an article. Both of these models, as well as the intermediate models, led to a decision tree with only one node and thus an area under the curve of the Sensitivity-Specificity curve of only 0.5.
 	Although our use of article sentiment to classify an article as real or fake was not successful, this does not mean it is impossible to classify articles as real or fake using sentiment analysis. Five out of the six predictors in our final model were related to article sentiment, but there are probably ways to categorize sentiment of an article with other predictors. For instance, an interesting technique for future modeling would be to use a different lexicon for sentiment analysis. Despite the fact that we conducted some initial data exploration using the nrc and bing lexicons for sentiment analysis, our final model was entirely based on the AFINN lexicon. There are also more lexicons available for sentiment analysis that could allow us to effectively categorize articles as fake or real.
